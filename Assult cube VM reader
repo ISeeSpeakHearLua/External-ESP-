@@ -1,0 +1,25 @@
+import pymem as pm
+import struct
+import time
+
+
+
+VM_Starting_Address = 0x57DFD0
+EntityList = 0x18AC04
+
+try:
+    AC = pm.Pymem("ac_client.exe")
+    print("Connected to AC succsefully")
+except:
+    print("Could not connect")
+
+VM_Data = AC.read_bytes(VM_Starting_Address, 64)
+VM = struct.unpack("<16f", VM_Data)
+
+
+
+#working VM reader DONT TOUCH IT 
+while True:
+    VM_Data = AC.read_bytes(VM_Starting_Address, 64)
+    VM = struct.unpack("<16f", VM_Data)
+    time.sleep(0.1)
