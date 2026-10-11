@@ -1,0 +1,80 @@
+import pymem as pm
+import struct
+import time
+import win32api
+import win32gui
+import win32con
+import pygame
+
+ScreenWidth = win32api.GetSystemMetrics(0)
+ScreenHeight = win32api.GetSystemMetrics(1)
+
+
+pygame.init()
+window = pygame.display.set_mode((ScreenWidth, ScreenHeight))
+WindowHandle = pygame.display.get_wm_info()["window"]
+ExtendedStyle = win32api.GetWindowLong(WindowHandle, win32con.GWL_EXSTYLE)
+win32gui.SetWindowLong(WindowHandle, win32con.GWL_EXSTYLE, ExtendedStyle | win32con.WS_EX_LAYERED | win32con.WS_EX_TRANSPARENT)
+win32gui.SetLayeredWindowAttributes(WindowHandle, win32api.RGB(0, 0, 0), 0, win32con.LWA_COLORKEY)
+win32gui.SetWindowPos(WindowHandle, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
+
+
+
+
+
+
+VM_Starting_Address = 0x57DFD0
+EntityListAddress = 0x58AC04
+PlayerCountAddress = 0x58AC0C
+HealthOffset = 0xEC
+
+AC = pm.Pymem("ac_client.exe")
+
+#extremely common function i copied and pasted becuase im not doing that maths
+def WorldToScreenPoint(x, y, z, VM):
+    clip_x = x*VM[0] + y*VM[4] + z*VM[8] + VM[12]
+    clip_y = x*VM[1] + y*VM[5] + z*VM[9] + VM[13]
+    clip_w = x*VM[3] + y*VM[7] + z*VM[11] + VM[15]
+
+    if clip_w < 0.1:
+        return None
+
+    sx = (ScreenWidth / 2) * (1 + clip_x / clip_w)
+    sy = (ScreenHeight / 2) * (1 - clip_y / clip_w)
+    return sx, sy
+
+
+while True:
+    pygame.event.pump()
+    window.fill((0, 0, 0))
+    VM = struct.unpack("<16f", AC.read_bytes(VM_Starting_Address, 64))
+
+    PlayerCount = AC.read_int(PlayerCountAddress)
+    PlrList = AC.read_uint(EntityListAddress)
+    EntityList = struct.unpack(f"<{PlayerCount}I", AC.read_bytes(PlrList, PlayerCount * 4))
+
+    for Entity in EntityList:
+        if Entity == 0:
+            continue
+
+        if AC.read_int(Entity + HealthOffset) <= 0:
+            continue
+
+        x = AC.read_float(Entity + 0x28)
+        y = AC.read_float(Entity + 0x2C)
+        z = AC.read_float(Entity + 0x30)
+
+        feet = WorldToScreenPoint(x, y, z - 0.5, VM)
+        head = WorldToScreenPoint(x, y, z + 5.5, VM)
+        screen = WorldToScreenPoint(x, z, y, VM)
+        if feet and head:
+            EntHeight = feet[1] - head[1]
+            EntWidth = EntHeight / 2
+            pygame.draw.rect(window, (255, 0, 0), (head[0] - EntWidth / 2, head[1], EntWidth, EntHeight), 2)
+            pygame.display.flip()
+    time.sleep(0.016)
+
+pygame.quit()
+
+
+
