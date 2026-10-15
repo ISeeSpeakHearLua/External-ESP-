@@ -1,0 +1,12 @@
+Games = {
+    "AssultCube": {"VM_Starting_Address": 0x57DFD0,
+                  "EntityListAddress":0x58AC04,
+                  "PlayerCountAddress": 0x58AC0C,
+                  "HealthOffset": 0xEC
+                } 
+    
+}
+
+for game in Games:
+    print(game)
+
